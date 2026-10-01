@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Retail Hub - Enterprise Digital Twin Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-sky-50/40 to-indigo-50/40 text-slate-800 min-h-screen flex flex-col justify-between selection:bg-blue-600 selection:text-white" x-data="connectedRetailApp()">
+
+    <!-- AUTHENTICATION VIEW -->
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center p-4 flex-1">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black px-4 py-2.5 rounded-2xl text-xl tracking-wider shadow-lg items-center gap-2">
+                    <i class="fa-solid fa-microchip text-amber-300"></i> RETAIL<span class="text-amber-300">AI</span>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900 mt-4" x-text="authMode === 'login' ? 'Enterprise User Login' : 'Register New User'"></h2>
+                <p class="text-xs text-slate-500">Authorized Personnel & Registered Users Portal</p>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form x-show="authMode === 'login'" @submit.prevent="login()" class="space-y-4">
+                <input type="email" required x-model="loginEmail" placeholder="admin@retailai.com or manager@retailai.com" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" required x-model="loginPassword" placeholder="••••••••" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <div x-show="loginError" class="p-3 bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span x-text="loginError"></span>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl text-xs shadow-lg transition">Access Platform</button>
+                <div class="text-center pt-2">
+                    <button type="button" @click="authMode = 'register'; loginError=''" class="text-xs text-blue-600 hover:underline font-bold">Need an account? Register here</button>
+                </div>
+            </form>
+
+            <!-- REGISTRATION FORM -->
+            <form x-show="authMode === 'register'" @submit.prevent="registerUser()" class="space-y-4">
+                <input type="text" required x-model="regName" placeholder="Full Name" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="email" required x-model="regEmail" placeholder="Email Address" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" required x-model="regPassword" placeholder="Password" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select x-model="regRole" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+                    <option value="SHOPPER">Shopper</option>
+                    <option value="STAFF">Store Staff</option>
+                    <option value="MANAGER">Store Manager</option>
+                    <option value="ADMIN">System Admin</option>
+                </select>
+
+                <div x-show="regError" class="p-3 bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span x-text="regError"></span>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-xs shadow-lg transition">Register & Sign In</button>
+                <div class="text-center pt-2">
+                    <button type="button" @click="authMode = 'login'; regError=''" class="text-xs text-blue-600 hover:underline font-bold">Back to Login</button>
+                </div>
+            </form>
+
+            <div class="bg-slate-100 p-3 rounded-2xl text-[10px] text-slate-600 space-y-1 border border-slate-200">
+                <p class="font-bold text-slate-800">Pre-Registered Accounts:</p>
+                <p>• Admin: <span class="font-mono text-blue-700">admin@retailai.com</span> | Pass: <span class="font-mono text-blue-700">admin123</span></p>
+                <p>• Manager: <span class="font-mono text-blue-700">manager@retailai.com</span> | Pass: <span class="font-mono text-blue-700">manager123</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div x-show="isLoggedIn" class="flex flex-col min-h-screen justify-between flex-1" x-cloak>
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black px-3.5 py-2 rounded-xl text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-amber-300"></i> RETAIL<span class="text-amber-300">AI v3.0</span>
+                </div>
+
+                <!-- LOCATION SELECTOR BADGE -->
+                <div @click="currentView = 'stores'" class="cursor-pointer hidden md:flex items-center gap-2 bg-slate-100 hover:bg-slate-200/80 transition border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700">
+                    <i class="fa-solid fa-location-dot text-red-500 animate-pulse"></i>
+                    <div>
+                        <span class="font-bold text-slate-900" x-text="selectedArea"></span>
+                        <span class="text-[10px] text-emerald-600 block font-bold" x-text="`${filteredStores.length} Stores Available`"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NAVIGATION BUTTONS -->
+            <div class="flex items-center gap-4">
+                <div class="flex bg-slate-200/70 p-1.5 rounded-2xl overflow-x-auto">
+                    <button @click="currentView = 'cart'" :class="currentView === 'cart' ? 'bg-blue-600 text-white shadow' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap">Catalog (46 Items)</button>
+                    <button @click="currentView = 'stores'" :class="currentView === 'stores' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-location-dot"></i> Store Finder
+                    </button>
+                    <button @click="currentView = 'counters'" :class="currentView === 'counters' ? 'bg-blue-600 text-white shadow' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap">Cash Counters (<span x-text="cashCounters.length"></span>)</button>
+                    <button @click="currentView = 'alarms'" :class="currentView === 'alarms' ? 'bg-red-600 text-white shadow' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Security (<span x-text="activeAlarmsCount"></span>)
+                    </button>
+                    <button @click="currentView = 'admin'" :class="currentView === 'admin' ? 'bg-purple-600 text-white shadow' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Admin Hub</button>
+                </div>
+
+                <div class="text-right border-l pl-3 border-slate-300 hidden sm:block">
+                    <p class="text-[10px] font-bold text-slate-800" x-text="currentUser.name"></p>
+                    <p class="text-[9px] text-blue-600 uppercase font-black" x-text="currentUser.role"></p>
+                </div>
+                <button @click="logout()" class="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 px-3 py-2 rounded-xl text-xs font-bold border transition"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl w-full mx-auto p-4 md:p-8 my-auto flex-1">
+            
+            <!-- STORES & AREA SELECTION VIEW -->
+            <div x-show="currentView === 'stores'" class="space-y-6" x-cloak>
+                <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <span class="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border">Region-Wise Fulfillment Hub</span>
+                        <h2 class="text-2xl font-black text-slate-900 mt-2">Select Preferred Area & Store</h2>
+                    </div>
+                    
+                    <!-- DYNAMIC LOCATION CHANGER -->
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-slate-700">Choose Area:</span>
+                        <select x-model="selectedArea" class="bg-white border-2 border-emerald-500 rounded-xl px-4 py-2 text-xs font-bold text-slate-800 focus:outline-none shadow-sm">
+                            <option value="Moolakulam">Moolakulam</option>
+                            <option value="Villianur">Villianur</option>
+                            <option value="Reddiarpalayam">Reddiarpalayam</option>
+                            <option value="Mettupalayam">Mettupalayam</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-sm text-slate-900 border-b pb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-street-view text-emerald-600"></i> Location Summary
+                        </h3>
+                        <div class="p-4 rounded-2xl border text-xs space-y-3 bg-emerald-50/60 border-emerald-200">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-700 uppercase text-[10px]">Selected Area</span>
+                                <span class="font-black text-xs uppercase text-emerald-700" x-text="selectedArea"></span>
+                            </div>
+                            <div class="border-t border-slate-200/80 pt-2 space-y-1">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Active Store Hub</p>
+                                <p class="font-black text-slate-900 text-sm" x-text="selectedStore ? selectedStore.name : 'None Selected'"></p>
+                                <p class="text-[11px] text-emerald-700 font-bold" x-text="selectedStore ? selectedStore.address : ''"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-sm text-slate-900 border-b pb-3 flex justify-between items-center">
+                            <span>Available Shops in <span x-text="selectedArea" class="text-emerald-600"></span></span>
+                            <span class="bg-blue-100 text-blue-800 text-[10px] font-black px-2.5 py-0.5 rounded-full" x-text="`${filteredStores.length} Stores`"></span>
+                        </h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="store in filteredStores" :key="store.name">
+                                <div class="bg-white rounded-2xl p-4 border transition hover:shadow-md space-y-3 relative overflow-hidden" :class="selectedStore && selectedStore.name === store.name ? 'border-2 border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h4 class="font-extrabold text-sm text-slate-900" x-text="store.name"></h4>
+                                            <p class="text-[10px] text-slate-500 font-medium" x-text="store.address"></p>
+                                        </div>
+                                        <span x-show="selectedStore && selectedStore.name === store.name" class="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Selected</span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-2 border-t">
+                                        <span class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                                            <i class="fa-solid fa-truck"></i> Express Delivery
+                                        </span>
+                                        <button @click="selectedStore = store" class="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl hover:bg-blue-500 transition">
+                                            Select Store
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CATALOG & SMART CART VIEW -->
+            <div x-show="currentView === 'cart'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass-panel rounded-3xl p-6 shadow-xl space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                        <div>
+                            <span class="bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border">Complete Inventory Catalog</span>
+                            <h2 class="text-2xl font-black text-slate-900 mt-2">Enterprise Multi-Category Catalog (46 Items)</h2>
+                        </div>
+                        <div class="bg-white px-4 py-2 rounded-2xl border text-right">
+                            <span class="text-[10px] text-slate-400 block">Active Cart Weight</span>
+                            <span class="text-sm font-black text-amber-600" x-text="totalWeight"></span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <input type="text" x-model="searchQuery" placeholder="Search products by name, tag, or category..." class="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="cat in categories" :key="cat">
+                                <button @click="selectedCategory = cat" :class="selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'" class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition" x-text="cat"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 46 PRODUCTS GRID -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[560px] overflow-y-auto pr-2">
+                        <template x-for="item in filteredCatalog" :key="item.tagId">
+                            <div class="bg-white hover:border-blue-400 border rounded-2xl p-3 group transition flex flex-col justify-between shadow-sm">
+                                <div>
+                                    <div class="h-28 rounded-xl overflow-hidden mb-2 bg-slate-100 relative">
+                                        <img :src="item.image" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                        <span class="absolute top-2 right-2 bg-slate-900/70 text-white text-[9px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm" x-text="item.category"></span>
+                                        <span class="absolute bottom-2 left-2 bg-white/90 text-slate-800 text-[8px] font-mono px-1.5 py-0.5 rounded border" x-text="item.tagId"></span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <h4 class="font-bold text-xs text-slate-800 line-clamp-1" x-text="item.name"></h4>
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-black text-emerald-600 text-sm" x-text="`₹${item.price}`"></span>
+                                            <span class="text-[9px] text-slate-500 font-bold" x-text="`${item.weight} kg`"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-2 border-t flex gap-1">
+                                    <button @click="addToCart(item)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-1.5 rounded-xl transition">+ Add to Cart</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-6">
+                    <div>
+                        <div class="border-b pb-3 flex justify-between items-center">
+                            <h3 class="font-bold text-sm text-slate-900">Smart Cart Tally</h3>
+                            <span class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-black" x-text="cart.length"></span>
+                        </div>
+                        
+                        <div class="mt-3 bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs space-y-2">
+                            <div class="flex justify-between items-center font-bold text-slate-800">
+                                <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-store text-blue-600"></i> Selected Hub
+                                </span>
+                                <button @click="currentView = 'stores'" class="text-[10px] text-blue-600 hover:underline font-bold">
+                                    <i class="fa-solid fa-map-location-dot"></i> Switch Area
+                                </button>
+                            </div>
+                            
+                            <div class="text-[11px] text-slate-600 space-y-0.5">
+                                <p class="font-bold text-emerald-700 flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check"></i> <span x-text="selectedStore ? selectedStore.name : 'Select Store'"></span>
+                                </p>
+                                <p class="text-[10px] text-slate-500" x-text="selectedArea"></p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 mt-4 max-h-60 overflow-y-auto">
+                            <template x-for="(item, index) in cart" :key="index">
+                                <div class="flex items-center justify-between bg-white p-3 rounded-2xl border gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-bold text-xs text-slate-800 truncate" x-text="item.name"></p>
+                                        <p class="text-[10px] text-emerald-700 font-bold" x-text="`₹${item.price}`"></p>
+                                    </div>
+                                    <button @click="removeItem(index)" class="text-red-500 text-[10px] p-1.5 hover:bg-red-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </template>
+                            <div x-show="cart.length === 0" class="text-center py-10 text-slate-400 text-xs font-semibold">Your cart is empty. Add items from the catalog.</div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-600 font-medium">Total Payable:</span>
+                            <span class="text-xl font-black text-emerald-700" x-text="`₹${cartTotal}`"></span>
+                        </div>
+                        <button @click="openCheckoutModal()" :disabled="cart.length === 0" :class="cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-xs transition shadow-lg flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-credit-card"></i> Select Payment Method
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CASH COUNTERS VIEW (EXPANDED TO MULTIPLE COUNTERS) -->
+            <div x-show="currentView === 'counters'" class="space-y-6" x-cloak>
+                <div class="glass-panel rounded-3xl p-6 shadow-xl flex justify-between items-center">
+                    <div>
+                        <span class="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border">Cashier Operations</span>
+                        <h2 class="text-2xl font-black text-slate-900 mt-2">Active Cash Counters (<span x-text="cashCounters.length"></span> Counters)</h2>
+                    </div>
+                    <button x-show="currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER'" @click="addNewCounter()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add New Counter
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <template x-for="counter in cashCounters" :key="counter.id">
+                        <div class="bg-white rounded-3xl p-4 border shadow-sm space-y-3 relative overflow-hidden">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <span class="font-extrabold text-xs text-slate-800" x-text="counter.name"></span>
+                                <span :class="counter.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'" class="text-[9px] font-black px-2 py-0.5 rounded-full" x-text="counter.status"></span>
+                            </div>
+                            
+                            <div class="bg-indigo-50/70 p-2.5 rounded-2xl border border-indigo-100 space-y-1">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] font-bold text-indigo-500 uppercase tracking-wider">Assigned Cashier</span>
+                                    <button x-show="currentUser.role === 'ADMIN' && counter.assignedStaff !== 'Unassigned'" @click="unassignStaff(counter)" class="text-[9px] text-red-600 font-bold hover:underline">Remove</button>
+                                </div>
+                                <p class="text-xs font-black text-indigo-900 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-user-gear text-indigo-600"></i>
+                                    <span x-text="counter.assignedStaff"></span>
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-2xl">
+                                <div>
+                                    <span class="text-[9px] text-slate-400 font-bold block">Queue</span>
+                                    <strong class="text-slate-800 font-black text-xs" x-text="`${counter.queueLength} People`"></strong>
+                                </div>
+                                <div>
+                                    <span class="text-[9px] text-slate-400 font-bold block">Est. Wait</span>
+                                    <strong class="text-slate-800 font-black text-xs" x-text="`${counter.avgWaitTime} Mins`"></strong>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center pt-1">
+                                <button @click="toggleCounterStatus(counter)" class="text-[10px] font-bold text-slate-600 hover:underline">Toggle</button>
+                                <button @click="counter.queueLength++" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] font-bold px-2 py-1 rounded-lg">+ Add Shopper</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- SECURITY ALARMS VIEW -->
+            <div x-show="currentView === 'alarms'" class="space-y-6" x-cloak>
+                <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <span class="bg-red-50 text-red-700 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border">Security Engine</span>
+                        <h2 class="text-2xl font-black text-slate-900 mt-2">Security Alarms & Audit Logs</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select x-model="alarmFilter" class="bg-white border rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none">
+                            <option value="ALL">All Statuses</option>
+                            <option value="ACTIVE">Active Only</option>
+                            <option value="RESOLVED">Resolved Only</option>
+                        </select>
+                        <button @click="triggerSimulatedAlarm()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-2">
+                            <i class="fa-solid fa-bell-concierge"></i> Trigger Test Alarm
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-3">Timestamp</th>
+                                    <th class="p-3">Incident ID</th>
+                                    <th class="p-3">Type</th>
+                                    <th class="p-3">Gate / Location</th>
+                                    <th class="p-3">Details / RFID</th>
+                                    <th class="p-3">Severity</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <template x-for="log in filteredAlarms" :key="log.id">
+                                    <tr class="hover:bg-slate-50/80 transition" :class="log.status === 'ACTIVE' ? 'bg-red-50/40' : ''">
+                                        <td class="p-3 font-mono text-slate-500" x-text="log.timestamp"></td>
+                                        <td class="p-3 font-mono font-bold text-slate-800" x-text="log.id"></td>
+                                        <td class="p-3 font-bold text-slate-800" x-text="log.type"></td>
+                                        <td class="p-3 text-slate-600" x-text="log.location"></td>
+                                        <td class="p-3">
+                                            <span class="font-bold text-slate-800" x-text="log.details"></span>
+                                            <span x-show="log.rfidTag" class="block font-mono text-[10px] text-slate-400" x-text="`Tag: ${log.rfidTag}`"></span>
+                                        </td>
+                                        <td class="p-3">
+                                            <span :class="log.severity === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'" class="text-[9px] font-black px-2 py-0.5 rounded-md uppercase" x-text="log.severity"></span>
+                                        </td>
+                                        <td class="p-3">
+                                            <span :class="log.status === 'ACTIVE' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'" class="text-[10px] font-bold px-2 py-0.5 rounded-full" x-text="log.status"></span>
+                                        </td>
+                                        <td class="p-3 text-right">
+                                            <button x-show="log.status === 'ACTIVE'" @click="resolveAlarm(log.id)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1 rounded-lg text-[10px]">Mark Resolved</button>
+                                            <span x-show="log.status === 'RESOLVED'" class="text-[10px] font-bold text-emerald-600"><i class="fa-solid fa-check"></i> Resolved</span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN HUB (7 STAFFS & MULTIPLE COUNTERS ASSIGNMENT) -->
+            <div x-show="currentView === 'admin'" class="space-y-6" x-cloak>
+                <div class="glass-panel rounded-3xl p-6 shadow-xl flex justify-between items-center">
+                    <div>
+                        <span class="bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border">Administrative Control</span>
+                        <h2 class="text-2xl font-black text-slate-900 mt-2">Staff Roster & Multi-Counter Hub</h2>
+                    </div>
+                </div>
+
+                <!-- METRICS GRID -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-3xl border shadow-sm">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Registered Users</span>
+                        <p class="text-3xl font-black text-slate-900 mt-2" x-text="registeredUsers.length"></p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl border shadow-sm">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Active Staff Roster</span>
+                        <p class="text-3xl font-black text-indigo-600 mt-2" x-text="`${staffList.length} Staff Members`"></p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl border shadow-sm">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Counters</span>
+                        <p class="text-3xl font-black text-emerald-600 mt-2" x-text="`${cashCounters.length} Counters`"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- STAFF ASSIGNMENT FORM & DIRECTORY -->
+                    <div class="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-sm text-slate-900 border-b pb-3 flex justify-between items-center">
+                            <span><i class="fa-solid fa-user-gear text-indigo-600"></i> Counter Staff Assignment</span>
+                        </h3>
+
+                        <form @submit.prevent="assignStaffToCounter()" class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Select Staff Member (7 Available)</label>
+                                <select x-model="selectedStaffToAssign" class="w-full bg-white border rounded-xl p-2.5 text-xs font-bold text-slate-800">
+                                    <template x-for="stf in staffList" :key="stf.id">
+                                        <option :value="stf.name" x-text="`${stf.name} (${stf.role})`"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Assign to Cash Counter</label>
+                                <select x-model="selectedCounterToAssign" class="w-full bg-white border rounded-xl p-2.5 text-xs font-bold text-slate-800">
+                                    <template x-for="cnt in cashCounters" :key="cnt.id">
+                                        <option :value="cnt.id" x-text="`${cnt.name} - [${cnt.assignedStaff}]`"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md">
+                                Save Staff Assignment
+                            </button>
+                        </form>
+
+                        <!-- 7 STAFF DIRECTORY -->
+                        <div class="space-y-2">
+                            <h4 class="text-xs font-bold text-slate-700 flex justify-between items-center">
+                                <span>Active Staff Roster</span>
+                                <span class="text-[10px] text-slate-500" x-text="`${staffList.length} Members`"></span>
+                            </h4>
+                            <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                <template x-for="staff in staffList" :key="staff.id">
+                                    <div class="flex justify-between items-center bg-white p-3 rounded-xl border text-xs shadow-sm">
+                                        <div>
+                                            <p class="font-bold text-slate-900" x-text="staff.name"></p>
+                                            <p class="text-[10px] text-slate-500" x-text="`ID: ${staff.id} | ${staff.role}`"></p>
+                                        </div>
+                                        <span :class="staff.assignedCounter === 'Unassigned' ? 'bg-slate-100 text-slate-600' : 'bg-indigo-50 text-indigo-700'" class="text-[10px] font-bold px-2 py-1 rounded-lg" x-text="staff.assignedCounter"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER ROLES MANAGEMENT -->
+                    <div class="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-sm text-slate-900 border-b pb-3">Registered Platform Accounts</h3>
+                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                            <template x-for="user in registeredUsers" :key="user.email">
+                                <div class="flex justify-between items-center bg-white p-3 rounded-2xl border text-xs">
+                                    <div>
+                                        <p class="font-bold text-slate-900" x-text="user.name"></p>
+                                        <p class="text-[10px] text-slate-500" x-text="user.email"></p>
+                                    </div>
+                                    <select x-model="user.role" class="bg-slate-100 border text-[10px] font-bold px-2 py-1 rounded-xl">
+                                        <option value="SHOPPER">SHOPPER</option>
+                                        <option value="STAFF">STAFF</option>
+                                        <option value="MANAGER">MANAGER</option>
+                                        <option value="ADMIN">ADMIN</option>
+                                    </select>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- PAYMENT MODAL -->
+    <div x-show="showPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4" x-cloak x-transition>
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative border border-slate-100" @click.outside="showPaymentModal = false">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="text-lg font-black text-slate-900">Secure Payment Checkout</h3>
+                    <p class="text-[10px] text-slate-500">Select payment authorization option</p>
+                </div>
+                <button @click="showPaymentModal = false" class="text-slate-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-2xl border flex justify-between items-center">
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Total Payable</span>
+                    <span class="text-2xl font-black text-emerald-600" x-text="`₹${cartTotal}`"></span>
+                </div>
+                <div class="text-right text-xs">
+                    <span class="text-[10px] text-slate-400 block font-bold">Fulfillment Store</span>
+                    <span class="font-bold text-slate-800" x-text="selectedStore ? selectedStore.name : 'Selected Store'"></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2">
+                <button @click="selectedPaymentMethod = 'UPI'" :class="selectedPaymentMethod === 'UPI' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="p-2.5 rounded-xl border text-center font-bold text-xs">UPI</button>
+                <button @click="selectedPaymentMethod = 'CARD'" :class="selectedPaymentMethod === 'CARD' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="p-2.5 rounded-xl border text-center font-bold text-xs">Card</button>
+                <button @click="selectedPaymentMethod = 'NETBANKING'" :class="selectedPaymentMethod === 'NETBANKING' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="p-2.5 rounded-xl border text-center font-bold text-xs">NetBank</button>
+                <button @click="selectedPaymentMethod = 'COD'" :class="selectedPaymentMethod === 'COD' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'" class="p-2.5 rounded-xl border text-center font-bold text-xs">COD</button>
+            </div>
+
+            <div class="pt-2 flex justify-end gap-2 border-t">
+                <button type="button" @click="showPaymentModal = false" class="px-4 py-2.5 rounded-xl border text-xs font-bold">Cancel</button>
+                <button type="button" @click="processPayment()" class="bg-emerald-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs">Authorize & Pay</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function connectedRetailApp() {
+            return {
+                isLoggedIn: false,
+                authMode: 'login',
+                loginEmail: '',
+                loginPassword: '',
+                loginError: '',
+                regName: '',
+                regEmail: '',
+                regPassword: '',
+                regRole: 'SHOPPER',
+                regError: '',
+                currentUser: { name: '', role: '', email: '' },
+                currentView: 'cart',
+                searchQuery: '',
+                selectedCategory: 'All',
+
+                showPaymentModal: false,
+                selectedPaymentMethod: 'UPI',
+
+                selectedArea: 'Moolakulam',
+                selectedStore: null,
+
+                allStores: [
+                    { name: "Sivasakthi Supermarket", area: "Moolakulam", address: "80 Feet Road, Moolakulam" },
+                    { name: "Tk Kandhan Super Market", area: "Moolakulam", address: "Main Road, Moolakulam" },
+                    { name: "Sri Murugan Super Market", area: "Villianur", address: "Car Street, Villianur" },
+                    { name: "Villianur Co-op Bazaar", area: "Villianur", address: "Near Bus Stand, Villianur" },
+                    { name: "More Supermarket", area: "Reddiarpalayam", address: "Villianur Main Road, Reddiarpalayam" },
+                    { name: "Sri Kumaran Supermarket", area: "Reddiarpalayam", address: "Oulgaret Main Road, Reddiarpalayam" },
+                    { name: "Kannan Supermart", area: "Mettupalayam", address: "Industrial Estate Road, Mettupalayam" },
+                    { name: "Mettupalayam Daily Fresh", area: "Mettupalayam", address: "Main Junction, Mettupalayam" }
+                ],
+
+                alarmFilter: 'ALL',
+
+                selectedStaffToAssign: 'Sarah Miller',
+                selectedCounterToAssign: 1,
+
+                categories: ['All', 'Household Items', 'Cosmetics', 'Dairy Products', 'Gifts', 'Accessories', 'Dresses', 'Electronics', 'Snacks'],
+
+                // 46 PRODUCTS CATALOG PRESERVED
+                rfidCatalog: [
+                    { tagId: 'RFID-101', name: 'Dyson Air Purifier', category: 'Household Items', price: 24999, weight: 4.5, image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-102', name: 'Smart Vacuum Cleaner', category: 'Household Items', price: 18999, weight: 3.2, image: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-103', name: 'Ceramic Dinner Set (16 Pcs)', category: 'Household Items', price: 3499, weight: 5.0, image: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-104', name: 'Stainless Steel Water Bottle', category: 'Household Items', price: 699, weight: 0.4, image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-105', name: 'Microfiber Bath Towel', category: 'Household Items', price: 499, weight: 0.3, image: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-106', name: 'Non-Stick Cookware Set', category: 'Household Items', price: 4299, weight: 3.8, image: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-201', name: 'Matte Liquid Lipstick', category: 'Cosmetics', price: 799, weight: 0.1, image: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-202', name: 'Hydrating Face Serum', category: 'Cosmetics', price: 1299, weight: 0.2, image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-203', name: 'Waterproof Mascara', category: 'Cosmetics', price: 599, weight: 0.08, image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-204', name: 'Organic Sunscreen SPF 50', category: 'Cosmetics', price: 899, weight: 0.15, image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-205', name: 'Eyeshadow Palette (12 Colors)', category: 'Cosmetics', price: 1499, weight: 0.25, image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-301', name: 'Organic Fresh Milk 1L', category: 'Dairy Products', price: 75, weight: 1.0, image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-302', name: 'Cheddar Cheese Block 200g', category: 'Dairy Products', price: 240, weight: 0.2, image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-303', name: 'Greek Yogurt Blueberry', category: 'Dairy Products', price: 90, weight: 0.15, image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-304', name: 'Salted Butter 500g', category: 'Dairy Products', price: 275, weight: 0.5, image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-305', name: 'Fresh Cottage Cheese (Paneer)', category: 'Dairy Products', price: 160, weight: 0.25, image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-401', name: 'Handcrafted Wooden Photo Frame', category: 'Gifts', price: 899, weight: 0.6, image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-402', name: 'Scented Soy Candle Set', category: 'Gifts', price: 1199, weight: 0.8, image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-403', name: 'Personalized Leather Keychain', category: 'Gifts', price: 399, weight: 0.05, image: 'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-404', name: 'Glass Crystal Snow Globe', category: 'Gifts', price: 1499, weight: 0.9, image: 'https://images.unsplash.com/photo-1513297887119-d46091b24bfa?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-405', name: 'Gourmet Chocolate Box', category: 'Gifts', price: 999, weight: 0.4, image: 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-501', name: 'Classic Leather Sunglasses', category: 'Accessories', price: 1999, weight: 0.15, image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-502', name: 'Genuine Leather Wallet', category: 'Accessories', price: 1499, weight: 0.2, image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-503', name: 'Minimalist Wristwatch', category: 'Accessories', price: 3499, weight: 0.25, image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-504', name: 'Canvas Travel Backpack', category: 'Accessories', price: 2799, weight: 1.1, image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-601', name: 'Floral Summer Maxi Dress', category: 'Dresses', price: 2499, weight: 0.4, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-602', name: 'Casual Denim Jacket', category: 'Dresses', price: 3299, weight: 0.8, image: 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-603', name: 'Cotton Polo T-Shirt', category: 'Dresses', price: 999, weight: 0.25, image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-604', name: 'Formal Evening Gown', category: 'Dresses', price: 5999, weight: 0.9, image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-605', name: 'Slim Fit Chino Trousers', category: 'Dresses', price: 1899, weight: 0.5, image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-701', name: 'Wireless Noise Canceling Headphones', category: 'Electronics', price: 8999, weight: 0.35, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-702', name: 'Smart Fitness Band', category: 'Electronics', price: 2499, weight: 0.05, image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-703', name: 'Portable Bluetooth Speaker', category: 'Electronics', price: 3499, weight: 0.6, image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-704', name: '4K Ultra HD Smart TV 43"', category: 'Electronics', price: 28999, weight: 8.5, image: 'https://images.unsplash.com/photo-1593784991095-a205069470b6?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-705', name: 'Mechanical Gaming Keyboard', category: 'Electronics', price: 4499, weight: 0.9, image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-706', name: 'Wireless Ergonomic Mouse', category: 'Electronics', price: 1299, weight: 0.12, image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-801', name: 'Roasted Almonds 250g', category: 'Snacks', price: 350, weight: 0.25, image: 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-802', name: 'Dark Chocolate Bar 70%', category: 'Snacks', price: 180, weight: 0.1, image: 'https://images.unsplash.com/photo-1548907040-4baa42d10919?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-803', name: 'Salted Potato Chips 150g', category: 'Snacks', price: 60, weight: 0.15, image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-804', name: 'Organic Multigrain Cookies', category: 'Snacks', price: 140, weight: 0.2, image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-805', name: 'Dried Cranberries 200g', category: 'Snacks', price: 290, weight: 0.2, image: 'https://images.unsplash.com/photo-1595475207225-428b62bda831?auto=format&fit=crop&w=400&q=80' },
+
+                    { tagId: 'RFID-901', name: 'Smart Home Security Camera', category: 'Electronics', price: 3299, weight: 0.4, image: 'https://images.unsplash.com/photo-1557324232-b8917d3c3dcb?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-902', name: 'Air Fryer 4.2L', category: 'Household Items', price: 6999, weight: 4.2, image: 'https://images.unsplash.com/photo-1585515320310-259814833e62?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-903', name: 'Organic Green Tea 100 Bags', category: 'Snacks', price: 450, weight: 0.2, image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-904', name: 'Stainless Steel Cutlery Set', category: 'Household Items', price: 1299, weight: 1.2, image: 'https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd?auto=format&fit=crop&w=400&q=80' },
+                    { tagId: 'RFID-905', name: 'Silk Sleep Mask', category: 'Accessories', price: 499, weight: 0.05, image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=400&q=80' }
+                ],
+
+                cart: [],
+
+                registeredUsers: [
+                    { name: 'System Admin', email: 'admin@retailai.com', pass: 'admin123', role: 'ADMIN', isLoggedIn: false },
+                    { name: 'Store Manager', email: 'manager@retailai.com', pass: 'manager123', role: 'MANAGER', isLoggedIn: false },
+                    { name: 'Sarah Miller', email: 'sarah@retailai.com', pass: 'staff123', role: 'STAFF', isLoggedIn: false }
+                ],
+
+                // 7 STAFF MEMBERS LIST
+                staffList: [
+                    { id: 'STF-101', name: 'Sarah Miller', role: 'Senior Cashier', assignedCounter: 'Counter #1 (Express)' },
+                    { id: 'STF-102', name: 'John Doe', role: 'Floor Cashier', assignedCounter: 'Counter #2' },
+                    { id: 'STF-103', name: 'Ramesh Kumar', role: 'Billing Specialist', assignedCounter: 'Counter #3' },
+                    { id: 'STF-104', name: 'Priya Sharma', role: 'Junior Cashier', assignedCounter: 'Counter #4' },
+                    { id: 'STF-105', name: 'Alex Wong', role: 'Counter Supervisor', assignedCounter: 'Counter #5' },
+                    { id: 'STF-106', name: 'Kavitha S.', role: 'Billing Assistant', assignedCounter: 'Counter #6' },
+                    { id: 'STF-107', name: 'David Raj', role: 'Express Cashier', assignedCounter: 'Counter #7' }
+                ],
+
+                // 8 CASH COUNTERS LIST
+                cashCounters: [
+                    { id: 1, name: 'Counter #1 (Express)', status: 'ACTIVE', queueLength: 1, avgWaitTime: 2, assignedStaff: 'Sarah Miller' },
+                    { id: 2, name: 'Counter #2', status: 'ACTIVE', queueLength: 3, avgWaitTime: 6, assignedStaff: 'John Doe' },
+                    { id: 3, name: 'Counter #3', status: 'ACTIVE', queueLength: 2, avgWaitTime: 4, assignedStaff: 'Ramesh Kumar' },
+                    { id: 4, name: 'Counter #4', status: 'ACTIVE', queueLength: 4, avgWaitTime: 8, assignedStaff: 'Priya Sharma' },
+                    { id: 5, name: 'Counter #5', status: 'ACTIVE', queueLength: 1, avgWaitTime: 2, assignedStaff: 'Alex Wong' },
+                    { id: 6, name: 'Counter #6', status: 'INACTIVE', queueLength: 0, avgWaitTime: 0, assignedStaff: 'Kavitha S.' },
+                    { id: 7, name: 'Counter #7', status: 'ACTIVE', queueLength: 2, avgWaitTime: 3, assignedStaff: 'David Raj' },
+                    { id: 8, name: 'Counter #8 (VIP)', status: 'INACTIVE', queueLength: 0, avgWaitTime: 0, assignedStaff: 'Unassigned' }
+                ],
+
+                securityLogs: [
+                    { id: 'ALM-9081', timestamp: '12:44:10 PM', type: 'Unpaid Item Gate Breached', location: 'Exit Gate A', details: 'Dyson Air Purifier', rfidTag: 'RFID-101', severity: 'CRITICAL', status: 'ACTIVE' },
+                    { id: 'ALM-9080', timestamp: '11:15:22 AM', type: 'Weight Mis-match', location: 'Self-Checkout 2', details: 'Smart Vacuum', rfidTag: 'RFID-102', severity: 'MEDIUM', status: 'RESOLVED' }
+                ],
+
+                init() {
+                    this.selectedStore = this.filteredStores[0] || null;
+                },
+
+                get filteredStores() {
+                    return this.allStores.filter(s => s.area === this.selectedArea);
+                },
+
+                assignStaffToCounter() {
+                    const counter = this.cashCounters.find(c => c.id == this.selectedCounterToAssign);
+                    const staff = this.staffList.find(s => s.name === this.selectedStaffToAssign);
+                    if (counter && staff) {
+                        counter.assignedStaff = staff.name;
+                        staff.assignedCounter = counter.name;
+                        alert(`✅ Assigned ${staff.name} to ${counter.name}`);
+                    }
+                },
+
+                unassignStaff(counter) {
+                    const staff = this.staffList.find(s => s.name === counter.assignedStaff);
+                    if (staff) staff.assignedCounter = 'Unassigned';
+                    counter.assignedStaff = 'Unassigned';
+                },
+
+                addNewCounter() {
+                    const newId = this.cashCounters.length + 1;
+                    this.cashCounters.push({
+                        id: newId,
+                        name: `Counter #${newId}`,
+                        status: 'ACTIVE',
+                        queueLength: 0,
+                        avgWaitTime: 0,
+                        assignedStaff: 'Unassigned'
+                    });
+                },
+
+                toggleCounterStatus(counter) {
+                    counter.status = counter.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                },
+
+                get filteredAlarms() {
+                    if (this.alarmFilter === 'ALL') return this.securityLogs;
+                    return this.securityLogs.filter(l => l.status === this.alarmFilter);
+                },
+
+                get activeAlarmsCount() {
+                    return this.securityLogs.filter(l => l.status === 'ACTIVE').length;
+                },
+
+                resolveAlarm(id) {
+                    const alarm = this.securityLogs.find(x => x.id === id);
+                    if (alarm) alarm.status = 'RESOLVED';
+                },
+
+                triggerSimulatedAlarm() {
+                    this.securityLogs.unshift({
+                        id: `ALM-${Math.floor(1000 + Math.random() * 9000)}`,
+                        timestamp: new Date().toLocaleTimeString(),
+                        type: 'Unpaid Item Gate Breached',
+                        location: 'Exit Gate A',
+                        details: 'Dyson Air Purifier',
+                        rfidTag: 'RFID-101',
+                        severity: 'CRITICAL',
+                        status: 'ACTIVE'
+                    });
+                },
+
+                openCheckoutModal() { if (this.cart.length > 0) this.showPaymentModal = true; },
+                processPayment() {
+                    alert(`✅ Payment Authorized!\nStore: ${this.selectedStore ? this.selectedStore.name : 'Hub'}`);
+                    this.showPaymentModal = false;
+                    this.cart = [];
+                },
+
+                get filteredCatalog() {
+                    return this.rfidCatalog.filter(item => {
+                        const matchesCategory = this.selectedCategory === 'All' || item.category === this.selectedCategory;
+                        const matchesSearch = item.name.toLowerCase().includes(this.searchQuery.toLowerCase());
+                        return matchesCategory && matchesSearch;
+                    });
+                },
+
+                get totalWeight() { return this.cart.reduce((s, i) => s + i.weight, 0).toFixed(1) + ' kg'; },
+                get cartTotal() { return this.cart.reduce((s, i) => s + i.price, 0); },
+
+                addToCart(item) { this.cart.push(item); },
+                removeItem(index) { this.cart.splice(index, 1); },
+
+                login() { 
+                    const foundUser = this.registeredUsers.find(u => u.email.toLowerCase() === this.loginEmail.toLowerCase() && u.pass === this.loginPassword);
+                    if (foundUser) {
+                        foundUser.isLoggedIn = true;
+                        this.isLoggedIn = true;
+                        this.currentUser = { name: foundUser.name, role: foundUser.role, email: foundUser.email };
+                    } else {
+                        this.loginError = 'Invalid credentials!';
+                    }
+                },
+
+                registerUser() {
+                    const newUser = { name: this.regName, email: this.regEmail, pass: this.regPassword, role: this.regRole, isLoggedIn: true };
+                    this.registeredUsers.push(newUser);
+                    this.currentUser = { name: newUser.name, role: newUser.role, email: newUser.email };
+                    this.isLoggedIn = true;
+                },
+
+                logout() { this.isLoggedIn = false; }
+            }
+        }
+    </script>
+</body>
+</html>
